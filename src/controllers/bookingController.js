@@ -976,61 +976,80 @@ class BookingController {
     try {
       const userId = req.user.id;
       
+      console.log('📊 Fetching booking stats for user:', userId);
+      
+      // Use supabaseAdmin to bypass RLS and ensure we can read the data
       // Get total bookings count
-      const { count: totalBookingsCount, error: totalError } = await supabase
+      const { count: totalBookingsCount, error: totalError } = await supabaseAdmin
         .from('bookings')
         .select('*', { count: 'exact', head: true })
         .eq('client_id', userId);
 
       if (totalError) {
+        console.error('Error fetching total bookings:', totalError);
         throw new AppError('Failed to fetch booking statistics', 500, 'BOOKING_STATS_FAILED');
       }
 
+      console.log('📊 Total bookings count:', totalBookingsCount);
+
       // Get upcoming bookings count
-      const { count: upcomingBookingsCount, error: upcomingError } = await supabase
+      const today = new Date().toISOString().split('T')[0];
+      const { count: upcomingBookingsCount, error: upcomingError } = await supabaseAdmin
         .from('bookings')
         .select('*', { count: 'exact', head: true })
         .eq('client_id', userId)
-        .gte('appointment_date', new Date().toISOString().split('T')[0]);
+        .gte('appointment_date', today);
 
       if (upcomingError) {
+        console.error('Error fetching upcoming bookings:', upcomingError);
         throw new AppError('Failed to fetch upcoming bookings', 500, 'UPCOMING_BOOKINGS_FAILED');
       }
 
+      console.log('📊 Upcoming bookings count:', upcomingBookingsCount);
+
       // Get completed bookings count
-      const { count: completedBookingsCount, error: completedError } = await supabase
+      const { count: completedBookingsCount, error: completedError } = await supabaseAdmin
         .from('bookings')
         .select('*', { count: 'exact', head: true })
         .eq('client_id', userId)
         .eq('status', 'completed');
 
       if (completedError) {
+        console.error('Error fetching completed bookings:', completedError);
         throw new AppError('Failed to fetch completed bookings', 500, 'COMPLETED_BOOKINGS_FAILED');
       }
 
-      // Get favorites count
-      const { count: favoritesCount, error: favoritesError } = await supabase
+      console.log('📊 Completed bookings count:', completedBookingsCount);
+
+      // Get favorites count - use supabaseAdmin to bypass RLS
+      const { count: favoritesCount, error: favoritesError } = await supabaseAdmin
         .from('user_favorites')
         .select('*', { count: 'exact', head: true })
         .eq('user_id', userId);
 
       if (favoritesError) {
         console.error('Error fetching favorites count:', favoritesError);
-        // Don't fail the whole request if favorites count fails
+        // Don't fail the whole request if favorites count fails, but log it
       }
+
+      console.log('📊 Favorites count:', favoritesCount);
+
+      const stats = {
+        total_bookings: totalBookingsCount ?? 0,
+        upcoming_bookings: upcomingBookingsCount ?? 0,
+        completed_bookings: completedBookingsCount ?? 0,
+        favorite_salons: favoritesCount ?? 0,
+      };
+
+      console.log('📊 Final stats:', stats);
 
       res.status(200).json({
         success: true,
-        data: {
-          total_bookings: totalBookingsCount || 0,
-          upcoming_bookings: upcomingBookingsCount || 0,
-          completed_bookings: completedBookingsCount || 0,
-          favorite_salons: favoritesCount || 0,
-          // Note: Clients don't have ratings (they rate salons), so we don't include average_rating
-        }
+        data: stats
       });
 
     } catch (error) {
+      console.error('❌ Error in getBookingStats:', error);
       if (error instanceof AppError) {
         throw error;
       }
