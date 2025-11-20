@@ -978,12 +978,40 @@ class BookingController {
       
       console.log('📊 Fetching booking stats for user:', userId);
       
-      // Use supabaseAdmin to bypass RLS and ensure we can read the data
-      // Get total bookings count
-      const { count: totalBookingsCount, error: totalError } = await supabaseAdmin
+      // First, let's verify the user exists and check what data we can see
+      const { data: userCheck, error: userCheckError } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id, email, user_type')
+        .eq('id', userId)
+        .single();
+      
+      console.log('📊 User check:', { userCheck, userCheckError });
+      
+      // First, let's check if there are ANY bookings for this user (no filters)
+      const { data: allBookingsCheck, count: allBookingsCount, error: allBookingsError } = await supabaseAdmin
         .from('bookings')
-        .select('*', { count: 'exact', head: true })
+        .select('id, client_id, status, appointment_date, created_at', { count: 'exact' })
         .eq('client_id', userId);
+      
+      console.log('📊 ALL bookings for user (no filters):', { 
+        count: allBookingsCount, 
+        sample: allBookingsCheck?.slice(0, 3),
+        error: allBookingsError 
+      });
+      
+      // Use supabaseAdmin to bypass RLS and ensure we can read the data
+      // Get total bookings count - also try to get actual data to debug
+      const { data: bookingsData, count: totalBookingsCount, error: totalError } = await supabaseAdmin
+        .from('bookings')
+        .select('id, client_id, status, appointment_date', { count: 'exact' })
+        .eq('client_id', userId)
+        .limit(5); // Get a few samples for debugging
+      
+      console.log('📊 Bookings query result:', { 
+        count: totalBookingsCount, 
+        sampleData: bookingsData,
+        error: totalError 
+      });
 
       if (totalError) {
         console.error('Error fetching total bookings:', totalError);
@@ -1022,10 +1050,30 @@ class BookingController {
       console.log('📊 Completed bookings count:', completedBookingsCount);
 
       // Get favorites count - use supabaseAdmin to bypass RLS
-      const { count: favoritesCount, error: favoritesError } = await supabaseAdmin
+      // Also get sample data for debugging
+      // First check ALL favorites for this user
+      const { data: allFavoritesCheck, count: allFavoritesCount, error: allFavoritesError } = await supabaseAdmin
         .from('user_favorites')
-        .select('*', { count: 'exact', head: true })
+        .select('id, user_id, salon_id, created_at', { count: 'exact' })
         .eq('user_id', userId);
+      
+      console.log('📊 ALL favorites for user (no filters):', { 
+        count: allFavoritesCount, 
+        sample: allFavoritesCheck?.slice(0, 3),
+        error: allFavoritesError 
+      });
+      
+      const { data: favoritesData, count: favoritesCount, error: favoritesError } = await supabaseAdmin
+        .from('user_favorites')
+        .select('id, user_id, salon_id', { count: 'exact' })
+        .eq('user_id', userId)
+        .limit(5); // Get a few samples for debugging
+      
+      console.log('📊 Favorites query result:', { 
+        count: favoritesCount, 
+        sampleData: favoritesData,
+        error: favoritesError 
+      });
 
       if (favoritesError) {
         console.error('Error fetching favorites count:', favoritesError);
@@ -1042,6 +1090,7 @@ class BookingController {
       };
 
       console.log('📊 Final stats:', stats);
+      console.log('📊 Sending response for user:', userId, 'Stats:', JSON.stringify(stats));
 
       res.status(200).json({
         success: true,
