@@ -119,8 +119,8 @@ class ReviewController {
           throw new AppError('You can only review completed or past bookings', 400, 'BOOKING_NOT_COMPLETED');
         }
 
-        // Check if review already exists for this booking
-        const { data: existingReview, error: existingError } = await supabase
+        // Check if review already exists for this booking (use supabaseAdmin)
+        const { data: existingReview, error: existingError } = await supabaseAdmin
           .from('reviews')
           .select('id')
           .eq('booking_id', booking_id)
@@ -149,8 +149,8 @@ class ReviewController {
         }
       }
 
-      // Create review
-      const { data: review, error: reviewError } = await supabase
+      // Create review (use supabaseAdmin to bypass RLS)
+      const { data: review, error: reviewError } = await supabaseAdmin
         .from('reviews')
         .insert([{
           client_id: clientId,
@@ -160,21 +160,26 @@ class ReviewController {
           comment: comment || null,
           is_visible: true,
         }])
-        .select(`
-          *,
-          client:user_profiles!reviews_client_id_fkey(
-            id,
-            first_name,
-            last_name,
-            avatar_url
-          )
-        `)
+        .select('*')
         .single();
 
       if (reviewError) {
         console.error('Error creating review:', reviewError);
+        console.error('Review error details:', JSON.stringify(reviewError, null, 2));
         throw new AppError('Failed to create review', 500, 'REVIEW_CREATION_FAILED');
       }
+      
+      // Get client info separately if needed
+      const { data: clientData } = await supabaseAdmin
+        .from('user_profiles')
+        .select('id, first_name, last_name, avatar_url')
+        .eq('id', clientId)
+        .single();
+      
+      const enrichedReview = {
+        ...review,
+        client: clientData || null,
+      };
 
       // Update salon rating_average and rating_count
       await this._updateSalonRating(salon_id);
@@ -182,7 +187,7 @@ class ReviewController {
       res.status(201).json({
         success: true,
         data: {
-          review,
+          review: enrichedReview,
         },
       });
     } catch (error) {
