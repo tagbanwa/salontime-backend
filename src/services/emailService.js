@@ -527,7 +527,7 @@ class EmailService {
             
             <div class="footer">
               <p>&copy; 2024 SalonTime. All rights reserved.</p>
-              <p>Need help? Contact us at support@salontime.com</p>
+              <p>Need help? Contact us at ${config.business.support_email}</p>
             </div>
           </div>
         </body>
@@ -599,7 +599,7 @@ class EmailService {
             
             <div class="footer">
               <p>&copy; 2024 SalonTime. All rights reserved.</p>
-              <p>Questions about payments? Contact support@salontime.com</p>
+              <p>Questions about payments? Contact ${config.business.support_email}</p>
             </div>
           </div>
         </body>

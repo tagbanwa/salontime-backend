@@ -5,7 +5,7 @@ SalonTime is a comprehensive salon booking and management system with OAuth auth
 
 ## Base URL
 - Development: `http://localhost:3000`
-- Production: `your-domain.com`
+- Production: Set via `API_BASE_URL` environment variable
 
 ## Authentication
 All protected endpoints require a Bearer token in the Authorization header:

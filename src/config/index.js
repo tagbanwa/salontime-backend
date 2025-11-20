@@ -52,7 +52,7 @@ const config = {
     smtp_port: parseInt(process.env.SMTP_PORT) || 587,
     smtp_user: process.env.SMTP_USER,
     smtp_pass: process.env.SMTP_PASS,
-    from_email: process.env.FROM_EMAIL || 'noreply@salontime.app'
+    from_email: process.env.FROM_EMAIL || 'noreply@example.com'
   },
 
   // Frontend URLs
@@ -99,8 +99,8 @@ const config = {
   // Business Configuration
   business: {
     name: process.env.BUSINESS_NAME || 'SalonTime',
-    support_email: process.env.SUPPORT_EMAIL || 'support@salontime.app',
-    company_address: process.env.COMPANY_ADDRESS || '123 Business St, City, State 12345'
+    support_email: process.env.SUPPORT_EMAIL || 'support@example.com',
+    company_address: process.env.COMPANY_ADDRESS || ''
   },
 
   // Security Configuration

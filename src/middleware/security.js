@@ -228,8 +228,8 @@ const sessionSecurity = (req, res, next) => {
 const corsOptions = {
   origin: (origin, callback) => {
     const allowedOrigins = [
-      'https://salontime.app',
-      'https://www.salontime.app',
+      // Add your production domains here via environment variable
+      // Example: process.env.ALLOWED_ORIGINS?.split(',') || []
       'http://localhost:3000', // Development
       'http://localhost:8080', // Development
     ];
