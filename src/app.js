@@ -26,6 +26,7 @@ const favoritesRoutes = require('./routes/favorites');
 const analyticsRoutes = require('./routes/analyticsRoutes');
 const cronRoutes = require('./routes/cronRoutes');
 const businessHoursRoutes = require('./routes/businessHours');
+const reviewRoutes = require('./routes/reviewRoutes');
 
 // Validate configuration
 config.validate();
@@ -113,6 +114,7 @@ app.use('/api/favorites', favoritesRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/api/cron', cronRoutes);
 app.use('/api/salon', businessHoursRoutes);
+app.use('/api/reviews', reviewRoutes);
 
 // Root endpoint
 app.get('/', (req, res) => {
