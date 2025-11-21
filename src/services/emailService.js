@@ -727,10 +727,16 @@ class EmailService {
     if (!this._checkEmailEnabled()) return null;
 
     try {
+      const language = data.owner.language || 'en';
+      const isDutch = language === 'nl';
+      const subject = isDutch 
+        ? `Nieuwe Review Ontvangen - ${data.salon.business_name}`
+        : `New Review Received - ${data.salon.business_name}`;
+      
       const mailOptions = {
         from: this.fromEmail,
         to: data.salon.email,
-        subject: `New Review Received - ${data.salon.business_name}`,
+        subject: subject,
         html: this._generateReviewNotificationTemplate(data),
       };
 
@@ -744,10 +750,53 @@ class EmailService {
 
   // Generate review notification template
   _generateReviewNotificationTemplate(data) {
-    const clientName = `${data.client.first_name} ${data.client.last_name}`.trim() || 'A client';
+    const language = data.owner.language || 'en';
+    const isDutch = language === 'nl';
+    
+    // Localized strings
+    const strings = {
+      en: {
+        subject: 'New Review Received',
+        greeting: 'Hi',
+        greatNews: 'Great news! You\'ve received a new review from',
+        reviewDetails: 'Review Details',
+        client: 'Client',
+        service: 'Service',
+        date: 'Date',
+        rating: 'Rating',
+        comment: 'Comment',
+        noComment: 'No comment provided with this review.',
+        visible: 'This review is now visible on your salon\'s profile page. Keep up the great work!',
+        tip: 'Tip',
+        tipText: 'Responding to reviews helps build trust with potential customers. Consider thanking your clients for their feedback!',
+        footer: 'This is an automated notification. Please do not reply to this email.',
+        outOf: 'out of 5 stars',
+      },
+      nl: {
+        subject: 'Nieuwe Review Ontvangen',
+        greeting: 'Hallo',
+        greatNews: 'Geweldig nieuws! Je hebt een nieuwe review ontvangen van',
+        reviewDetails: 'Review Details',
+        client: 'Klant',
+        service: 'Service',
+        date: 'Datum',
+        rating: 'Beoordeling',
+        comment: 'Opmerking',
+        noComment: 'Geen opmerking bijgevoegd bij deze review.',
+        visible: 'Deze review is nu zichtbaar op je salon profielpagina. Ga zo door!',
+        tip: 'Tip',
+        tipText: 'Reageren op reviews helpt vertrouwen op te bouwen met potentiële klanten. Overweeg je klanten te bedanken voor hun feedback!',
+        footer: 'Dit is een geautomatiseerde melding. Reageer niet op deze e-mail.',
+        outOf: 'van de 5 sterren',
+      },
+    };
+    
+    const t = strings[language] || strings.en;
+    const clientName = `${data.client.first_name} ${data.client.last_name}`.trim() || (isDutch ? 'Een klant' : 'A client');
     const stars = '⭐'.repeat(data.review.rating);
     const emptyStars = '☆'.repeat(5 - data.review.rating);
-    const formattedDate = new Date(data.review.created_at).toLocaleDateString('en-US', {
+    const locale = isDutch ? 'nl-NL' : 'en-US';
+    const formattedDate = new Date(data.review.created_at).toLocaleDateString(locale, {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
@@ -778,63 +827,62 @@ class EmailService {
       <body>
         <div class="container">
           <div class="header">
-            <h1>⭐ New Review Received!</h1>
+            <h1>⭐ ${t.subject}!</h1>
             <p>${data.salon.business_name}</p>
           </div>
           
           <div class="content">
-            <p>Hi ${data.owner.first_name},</p>
-            <p>Great news! You've received a new review from <strong>${clientName}</strong>.</p>
+            <p>${t.greeting} ${data.owner.first_name},</p>
+            <p>${t.greatNews} <strong>${clientName}</strong>.</p>
             
             <div class="review-card">
-              <h2 style="margin-top: 0; color: #667eea;">Review Details</h2>
+              <h2 style="margin-top: 0; color: #667eea;">${t.reviewDetails}</h2>
               
               <div class="rating">
-                ${stars}${emptyStars} <span style="font-size: 18px; color: #333; margin-left: 10px;">${data.review.rating} out of 5 stars</span>
+                ${stars}${emptyStars} <span style="font-size: 18px; color: #333; margin-left: 10px;">${data.review.rating} ${t.outOf}</span>
               </div>
               
               <div class="details">
                 <div class="detail-row">
-                  <span class="detail-label">Client:</span>
+                  <span class="detail-label">${t.client}:</span>
                   <span class="detail-value">${clientName}</span>
                 </div>
                 <div class="detail-row">
-                  <span class="detail-label">Service:</span>
+                  <span class="detail-label">${t.service}:</span>
                   <span class="detail-value">${data.review.service_name}</span>
                 </div>
                 <div class="detail-row">
-                  <span class="detail-label">Date:</span>
+                  <span class="detail-label">${t.date}:</span>
                   <span class="detail-value">${formattedDate}</span>
                 </div>
                 <div class="detail-row">
-                  <span class="detail-label">Rating:</span>
+                  <span class="detail-label">${t.rating}:</span>
                   <span class="detail-value">${data.review.rating} / 5</span>
                 </div>
               </div>
               
               ${data.review.comment ? `
                 <div class="comment">
-                  <strong>Comment:</strong><br>
+                  <strong>${t.comment}:</strong><br>
                   "${data.review.comment}"
                 </div>
               ` : `
                 <div class="no-comment">
-                  No comment provided with this review.
+                  ${t.noComment}
                 </div>
               `}
             </div>
             
-            <p>This review is now visible on your salon's profile page. Keep up the great work!</p>
+            <p>${t.visible}</p>
             
             <p style="margin-top: 30px;">
-              <strong>💡 Tip:</strong> Responding to reviews helps build trust with potential customers. 
-              Consider thanking your clients for their feedback!
+              <strong>💡 ${t.tip}:</strong> ${t.tipText}
             </p>
           </div>
           
           <div class="footer">
             <p>&copy; ${new Date().getFullYear()} SalonTime. All rights reserved.</p>
-            <p>This is an automated notification. Please do not reply to this email.</p>
+            <p>${t.footer}</p>
           </div>
         </div>
       </body>

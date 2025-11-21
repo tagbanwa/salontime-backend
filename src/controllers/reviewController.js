@@ -620,10 +620,10 @@ class ReviewController {
         return;
       }
 
-      // Get salon owner information
+      // Get salon owner information (including language preference)
       const { data: owner, error: ownerError } = await supabaseAdmin
         .from('user_profiles')
-        .select('id, first_name, last_name, email')
+        .select('id, first_name, last_name, email, language')
         .eq('id', salon.owner_id)
         .maybeSingle();
 
@@ -661,6 +661,9 @@ class ReviewController {
         return;
       }
 
+      // Get owner's language preference (default to 'en' if not set)
+      const ownerLanguage = owner.language || 'en';
+
       // Send email notification
       await emailService.sendReviewNotification({
         salon: {
@@ -670,6 +673,7 @@ class ReviewController {
         owner: {
           first_name: owner.first_name,
           last_name: owner.last_name,
+          language: ownerLanguage,
         },
         client: {
           first_name: client?.first_name || 'A client',
