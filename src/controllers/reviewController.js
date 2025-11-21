@@ -30,16 +30,29 @@ class ReviewController {
       // Then enrich with client, booking, and service data
       const enrichedReviews = await Promise.all(
         (reviews || []).map(async (review) => {
-          // Get client info
-          const { data: client } = await supabase
-            .from('user_profiles')
-            .select('id, first_name, last_name, avatar')
-            .eq('id', review.client_id)
-            .single();
-          
-          // Map avatar to avatar_url for consistency
-          if (client) {
-            client.avatar_url = client.avatar;
+          // Get client info using supabaseAdmin to bypass RLS
+          let client = null;
+          try {
+            const { data: clientData, error: clientError } = await supabaseAdmin
+              .from('user_profiles')
+              .select('id, first_name, last_name, avatar')
+              .eq('id', review.client_id)
+              .single();
+            
+            if (clientError) {
+              console.error(`❌ Error fetching client for review ${review.id}:`, clientError);
+              console.error(`   Client ID: ${review.client_id}`);
+            } else if (clientData) {
+              client = {
+                ...clientData,
+                avatar_url: clientData.avatar, // Map avatar to avatar_url for consistency
+              };
+              console.log(`✅ Fetched client for review ${review.id}: ${clientData.first_name} ${clientData.last_name}`);
+            } else {
+              console.warn(`⚠️ No client data returned for review ${review.id}, client_id: ${review.client_id}`);
+            }
+          } catch (e) {
+            console.error(`❌ Exception fetching client for review ${review.id}:`, e);
           }
 
           // Get booking and service info if booking_id exists
@@ -47,33 +60,41 @@ class ReviewController {
           let service = null;
           
           if (review.booking_id) {
-            const { data: bookingData } = await supabase
-              .from('bookings')
-              .select('id, appointment_date, service_id')
-              .eq('id', review.booking_id)
-              .single();
-
-            if (bookingData && bookingData.service_id) {
-              booking = bookingData;
-              
-              // Get service info
-              const { data: serviceData } = await supabase
-                .from('services')
-                .select('id, name')
-                .eq('id', bookingData.service_id)
+            try {
+              const { data: bookingData, error: bookingError } = await supabaseAdmin
+                .from('bookings')
+                .select('id, appointment_date, service_id')
+                .eq('id', review.booking_id)
                 .single();
-              
-              if (serviceData) {
-                service = serviceData;
+
+              if (bookingError) {
+                console.error(`Error fetching booking for review ${review.id}:`, bookingError);
+              } else if (bookingData && bookingData.service_id) {
+                booking = bookingData;
+                
+                // Get service info
+                const { data: serviceData, error: serviceError } = await supabaseAdmin
+                  .from('services')
+                  .select('id, name')
+                  .eq('id', bookingData.service_id)
+                  .single();
+                
+                if (serviceError) {
+                  console.error(`Error fetching service for review ${review.id}:`, serviceError);
+                } else if (serviceData) {
+                  service = serviceData;
+                }
               }
+            } catch (e) {
+              console.error(`Exception fetching booking/service for review ${review.id}:`, e);
             }
           }
 
           return {
             ...review,
-            client: client || null,
-            booking: booking || null,
-            service: service || null,
+            client: client,
+            booking: booking,
+            service: service,
           };
         })
       );
