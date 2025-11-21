@@ -12,26 +12,10 @@ class ReviewController {
     }
 
     try {
+      // First, get reviews with basic data
       const { data: reviews, error } = await supabase
         .from('reviews')
-        .select(`
-          *,
-          client:user_profiles!reviews_client_id_fkey(
-            id,
-            first_name,
-            last_name,
-            avatar_url
-          ),
-          booking:bookings!reviews_booking_id_fkey(
-            id,
-            appointment_date,
-            service_id,
-            service:services!bookings_service_id_fkey(
-              id,
-              name
-            )
-          )
-        `)
+        .select('*')
         .eq('salon_id', salonId)
         .eq('is_visible', true)
         .order('created_at', { ascending: false })
@@ -39,8 +23,60 @@ class ReviewController {
 
       if (error) {
         console.error('Error fetching salon reviews:', error);
+        console.error('Error details:', JSON.stringify(error, null, 2));
         throw new AppError('Failed to fetch reviews', 500, 'REVIEWS_FETCH_FAILED');
       }
+
+      // Then enrich with client, booking, and service data
+      const enrichedReviews = await Promise.all(
+        (reviews || []).map(async (review) => {
+          // Get client info
+          const { data: client } = await supabase
+            .from('user_profiles')
+            .select('id, first_name, last_name, avatar')
+            .eq('id', review.client_id)
+            .single();
+          
+          // Map avatar to avatar_url for consistency
+          if (client) {
+            client.avatar_url = client.avatar;
+          }
+
+          // Get booking and service info if booking_id exists
+          let booking = null;
+          let service = null;
+          
+          if (review.booking_id) {
+            const { data: bookingData } = await supabase
+              .from('bookings')
+              .select('id, appointment_date, service_id')
+              .eq('id', review.booking_id)
+              .single();
+
+            if (bookingData && bookingData.service_id) {
+              booking = bookingData;
+              
+              // Get service info
+              const { data: serviceData } = await supabase
+                .from('services')
+                .select('id, name')
+                .eq('id', bookingData.service_id)
+                .single();
+              
+              if (serviceData) {
+                service = serviceData;
+              }
+            }
+          }
+
+          return {
+            ...review,
+            client: client || null,
+            booking: booking || null,
+            service: service || null,
+          };
+        })
+      );
 
       // Calculate average rating and count
       const { data: stats, error: statsError } = await supabase
@@ -61,7 +97,7 @@ class ReviewController {
       res.status(200).json({
         success: true,
         data: {
-          reviews: reviews || [],
+          reviews: enrichedReviews || [],
           stats: {
             average_rating: parseFloat(averageRating.toFixed(2)),
             total_reviews: reviewCount,
