@@ -183,14 +183,21 @@ class ReviewController {
           throw new AppError('You can only review completed or past bookings', 400, 'BOOKING_NOT_COMPLETED');
         }
 
-        // Check if review already exists for this booking (use supabaseAdmin)
+        // Check if review already exists for THIS SPECIFIC booking (use supabaseAdmin)
+        // This allows multiple reviews for different booking instances (e.g., booking same service twice)
         const { data: existingReview, error: existingError } = await supabaseAdmin
           .from('reviews')
           .select('id')
-          .eq('booking_id', booking_id)
-          .single();
+          .eq('booking_id', booking_id) // Only check THIS booking_id, not other bookings
+          .maybeSingle(); // Use maybeSingle to avoid errors when no review exists
+
+        if (existingError && existingError.code !== 'PGRST116') {
+          // PGRST116 is "not found" which is fine - means no review exists yet
+          console.error('Error checking for existing review:', existingError);
+        }
 
         if (existingReview) {
+          // Review already exists for THIS specific booking
           throw new AppError('Review already exists for this booking', 409, 'REVIEW_ALREADY_EXISTS');
         }
 
