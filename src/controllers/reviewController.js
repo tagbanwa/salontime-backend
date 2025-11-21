@@ -25,11 +25,11 @@ class ReviewController {
           booking:bookings!reviews_booking_id_fkey(
             id,
             appointment_date,
-            service_id
-          ),
-          service:services!bookings_service_id_fkey(
-            id,
-            name
+            service_id,
+            service:services!bookings_service_id_fkey(
+              id,
+              name
+            )
           )
         `)
         .eq('salon_id', salonId)
