@@ -34,9 +34,10 @@ class ReviewController {
           let client = null;
           try {
             // Use .maybeSingle() instead of .single() to avoid errors when no data exists
+            // Use select('*') to get all columns and handle any column name variations
             const { data: clientData, error: clientError } = await supabaseAdmin
               .from('user_profiles')
-              .select('id, first_name, last_name, avatar')
+              .select('*')
               .eq('id', review.client_id)
               .maybeSingle();
             
@@ -45,9 +46,12 @@ class ReviewController {
               console.error(`   Client ID: ${review.client_id}`);
               console.error(`   Error code: ${clientError.code}, message: ${clientError.message}`);
             } else if (clientData) {
+              // Map avatar field - could be 'avatar' or 'avatar_url'
               client = {
-                ...clientData,
-                avatar_url: clientData.avatar, // Map avatar to avatar_url for consistency
+                id: clientData.id,
+                first_name: clientData.first_name,
+                last_name: clientData.last_name,
+                avatar_url: clientData.avatar_url || clientData.avatar || null,
               };
               console.log(`✅ Fetched client for review ${review.id}: ${clientData.first_name} ${clientData.last_name}`);
             } else {
@@ -232,7 +236,7 @@ class ReviewController {
       // Get client info separately if needed
       const { data: clientData } = await supabaseAdmin
         .from('user_profiles')
-        .select('id, first_name, last_name, avatar_url')
+        .select('*')
         .eq('id', clientId)
         .single();
       
@@ -403,9 +407,10 @@ class ReviewController {
           let salon = null;
           try {
             // Use .maybeSingle() instead of .single() to avoid errors when no data exists
+            // Use select('*') to get all columns
             const { data: salonData, error: salonError } = await supabaseAdmin
               .from('salons')
-              .select('id, business_name, image_url')
+              .select('*')
               .eq('id', review.salon_id)
               .maybeSingle();
             
@@ -414,7 +419,11 @@ class ReviewController {
               console.error(`   Salon ID: ${review.salon_id}`);
               console.error(`   Error code: ${salonError.code}, message: ${salonError.message}`);
             } else if (salonData) {
-              salon = salonData;
+              salon = {
+                id: salonData.id,
+                business_name: salonData.business_name,
+                images: salonData.images,
+              };
               console.log(`✅ Fetched salon for review ${review.id}: ${salonData.business_name}`);
             } else {
               console.warn(`⚠️ Salon not found for review ${review.id}, salon_id: ${review.salon_id}`);
