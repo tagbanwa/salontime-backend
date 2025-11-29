@@ -602,13 +602,21 @@ class SalonController {
       });
 
       const paginatedSalons = filteredSalons.slice(offset, offset + parseInt(limit));
+      const hasMore = (offset + parseInt(limit)) < filteredSalons.length;
 
       console.log(`✅ Found ${filteredSalons.length} salons with backend filters`);
       console.log(`📄 Returning ${paginatedSalons.length} salons for page ${page}`);
+      console.log(`📊 Has more pages: ${hasMore}`);
 
       res.status(200).json({
         success: true,
-        data: paginatedSalons
+        data: paginatedSalons,
+        pagination: {
+          page: parseInt(page),
+          limit: parseInt(limit),
+          total: filteredSalons.length,
+          hasMore: hasMore
+        }
       });
 
     } catch (error) {

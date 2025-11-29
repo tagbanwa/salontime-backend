@@ -6,7 +6,7 @@ class SupabaseService {
   async getUserProfile(userId) {
     console.log('🔍 SupabaseService.getUserProfile called with userId:', userId);
     console.log('🔍 User ID type:', typeof userId);
-    
+
     // Use supabaseAdmin to bypass RLS
     const { data, error } = await supabaseAdmin
       .from('user_profiles')
@@ -20,7 +20,7 @@ class SupabaseService {
     if (error) {
       console.log('❌ Supabase error code:', error.code);
       console.log('❌ Supabase error message:', error.message);
-      
+
       if (error.code === 'PGRST116') {
         console.log('❌ No user profile found for ID:', userId);
         throw new AppError('User profile not found', 404, 'PROFILE_NOT_FOUND');
@@ -40,7 +40,7 @@ class SupabaseService {
     } catch (error) {
       if (error.code === 'PROFILE_NOT_FOUND') {
         console.log('🔧 Profile not found, attempting to create automatically...');
-        
+
         // Try to get user info from auth to create profile
         try {
           // Use admin client to get user by ID (no token needed)
@@ -49,7 +49,7 @@ class SupabaseService {
             console.log('❌ Failed to get user from auth:', authError);
             throw new AppError('User not found in auth system', 404, 'USER_NOT_FOUND');
           }
-          
+
           // Create basic profile with auth data
           const profileData = {
             id: userId,
@@ -60,7 +60,7 @@ class SupabaseService {
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
           };
-          
+
           console.log('🔧 Creating profile with data:', profileData);
           // Use supabaseAdmin to bypass RLS when creating profile
           const { data: newProfile, error: createError } = await supabaseAdmin
@@ -68,12 +68,12 @@ class SupabaseService {
             .insert([profileData])
             .select()
             .single();
-            
+
           if (createError) {
             console.log('❌ Failed to create profile:', createError);
             throw new AppError('Failed to create user profile', 500, 'PROFILE_CREATE_FAILED');
           }
-          
+
           console.log('✅ Profile created successfully:', newProfile);
           return newProfile;
         } catch (createError) {
@@ -91,9 +91,9 @@ class SupabaseService {
     // Use upsert to handle existing profiles and prevent duplicates
     const { data, error } = await supabaseAdmin
       .from('user_profiles')
-      .upsert([profileData], { 
+      .upsert([profileData], {
         onConflict: 'id',
-        ignoreDuplicates: false 
+        ignoreDuplicates: false
       })
       .select()
       .single();
@@ -114,7 +114,8 @@ class SupabaseService {
   }
 
   async updateUserProfile(userId, updates) {
-    const { data, error } = await supabase
+    // Use supabaseAdmin to bypass RLS policies for user profile updates
+    const { data, error } = await supabaseAdmin
       .from('user_profiles')
       .update({
         ...updates,
@@ -125,6 +126,7 @@ class SupabaseService {
       .single();
 
     if (error) {
+      console.error('❌ Error updating user profile:', error);
       throw new AppError('Failed to update user profile', 500, 'DATABASE_ERROR');
     }
 
@@ -135,7 +137,7 @@ class SupabaseService {
   async uploadAvatar(userId, fileBuffer, mimeType, originalFileName) {
     const config = require('../config');
     const bucketName = config.supabase.storage_bucket;
-    
+
     // Get file extension from mime type
     const extMap = {
       'image/jpeg': 'jpg',
@@ -145,15 +147,15 @@ class SupabaseService {
       'image/gif': 'gif'
     };
     const ext = extMap[mimeType] || 'jpg';
-    
+
     // Create file path: {user_id}/avatar.{ext}
     const filePath = `${userId}/avatar.${ext}`;
-    
+
     // Delete old avatar if exists
     const { data: oldFiles } = await supabaseAdmin.storage
       .from(bucketName)
       .list(userId);
-    
+
     if (oldFiles && oldFiles.length > 0) {
       // Delete all files in user's folder (in case of multiple formats)
       const filesToDelete = oldFiles.map(file => `${userId}/${file.name}`);
@@ -161,7 +163,7 @@ class SupabaseService {
         .from(bucketName)
         .remove(filesToDelete);
     }
-    
+
     // Upload new avatar
     const { data, error } = await supabaseAdmin.storage
       .from(bucketName)
@@ -170,24 +172,24 @@ class SupabaseService {
         upsert: true,
         cacheControl: '3600'
       });
-    
+
     if (error) {
       console.error('Error uploading avatar:', error);
       throw new AppError('Failed to upload avatar', 500, 'AVATAR_UPLOAD_FAILED');
     }
-    
+
     // Get public URL
     const { data: urlData } = supabaseAdmin.storage
       .from(bucketName)
       .getPublicUrl(filePath);
-    
+
     return urlData.publicUrl;
   }
 
   // Authentication helpers
   async checkUserExists(email) {
     const { data, error } = await supabaseAdmin.auth.admin.getUserByEmail(email);
-    
+
     if (error && error.status !== 400) {
       throw new AppError('Failed to check user existence', 500, 'AUTH_ERROR');
     }

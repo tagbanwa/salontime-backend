@@ -74,7 +74,7 @@ class UserController {
   getProfile = asyncHandler(async (req, res) => {
     try {
       const userProfile = await supabaseService.getUserProfileOrCreate(req.user.id);
-      
+
       res.status(200).json({
         success: true,
         data: {
@@ -90,19 +90,21 @@ class UserController {
   // Get notification settings
   getNotificationSettings = asyncHandler(async (req, res) => {
     try {
-      // For now, return default settings since we don't have a notification_settings table
-      const defaultSettings = {
-        notifications_enabled: true,
-        email_notifications: true,
-        sms_notifications: false,
-        push_notifications: true,
-        booking_reminders: true,
-        marketing_emails: false
-      };
+      // Fetch actual settings from user_settings table
+      const settings = await supabaseService.getUserSettings(req.user.id);
 
       res.status(200).json({
         success: true,
-        data: defaultSettings
+        data: {
+          settings: {
+            notifications_enabled: settings.notifications_enabled,
+            email_notifications: settings.email_notifications,
+            sms_notifications: settings.sms_notifications,
+            push_notifications: settings.push_notifications,
+            booking_reminders: settings.booking_reminders,
+            marketing_emails: settings.marketing_emails
+          }
+        }
       });
     } catch (error) {
       console.error('Error fetching notification settings:', error);
@@ -112,28 +114,30 @@ class UserController {
 
   // Update notification settings
   updateNotificationSettings = asyncHandler(async (req, res) => {
-    const { 
-      notifications_enabled, 
-      email_notifications, 
-      sms_notifications, 
-      push_notifications, 
-      booking_reminders, 
-      marketing_emails 
+    const {
+      notifications_enabled,
+      email_notifications,
+      sms_notifications,
+      push_notifications,
+      booking_reminders,
+      marketing_emails
     } = req.body;
 
     try {
-      // For now, just return success since we don't have a notification_settings table
-      // In the future, this would save to a notification_settings table
-      
+      // Save notification settings to user_settings table
+      const updatedSettings = await supabaseService.updateUserSettings(req.user.id, {
+        notifications_enabled,
+        email_notifications,
+        sms_notifications,
+        push_notifications,
+        booking_reminders,
+        marketing_emails
+      });
+
       res.status(200).json({
         success: true,
         data: {
-          notifications_enabled,
-          email_notifications,
-          sms_notifications,
-          push_notifications,
-          booking_reminders,
-          marketing_emails
+          settings: updatedSettings
         }
       });
     } catch (error) {
