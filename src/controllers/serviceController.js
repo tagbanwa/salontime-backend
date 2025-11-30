@@ -1,5 +1,5 @@
 const { asyncHandler, AppError } = require('../middleware/errorHandler');
-const supabaseService = require('../services/supabaseService');
+const { supabase } = require('../config/database');
 
 class ServiceController {
   // Get all services for a salon
@@ -8,7 +8,7 @@ class ServiceController {
 
     try {
       // Get user's salon
-      const { data: salon, error: salonError } = await supabaseService.supabase
+      const { data: salon, error: salonError } = await supabase
         .from('salons')
         .select('id')
         .eq('owner_id', req.user.id)
@@ -21,7 +21,7 @@ class ServiceController {
       const salonId = salon.id;
       const offset = (page - 1) * limit;
 
-      const { data: services, error } = await supabaseService.supabase
+      const { data: services, error } = await supabase
         .from('services')
         .select(`
           *,
@@ -64,7 +64,7 @@ class ServiceController {
     }
 
     try {
-      const { data: service, error } = await supabaseService.supabase
+      const { data: service, error } = await supabase
         .from('services')
         .insert({
           salon_id: salonId,
@@ -117,7 +117,7 @@ class ServiceController {
       if (category_id !== undefined) updateData.category_id = category_id;
       if (is_active !== undefined) updateData.is_active = is_active;
 
-      const { data: service, error } = await supabaseService.supabase
+      const { data: service, error } = await supabase
         .from('services')
         .update(updateData)
         .eq('id', serviceId)
@@ -155,7 +155,7 @@ class ServiceController {
     }
 
     try {
-      const { error } = await supabaseService.supabase
+      const { error } = await supabase
         .from('services')
         .delete()
         .eq('id', serviceId)
@@ -181,7 +181,7 @@ class ServiceController {
   // Get service categories
   getServiceCategories = asyncHandler(async (req, res) => {
     try {
-      const { data: categories, error } = await supabaseService.supabase
+      const { data: categories, error } = await supabase
         .from('service_categories')
         .select('*')
         .order('name');
@@ -205,3 +205,4 @@ class ServiceController {
 }
 
 module.exports = new ServiceController();
+

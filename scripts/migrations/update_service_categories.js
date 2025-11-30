@@ -26,15 +26,15 @@ async function updateServiceCategories() {
 
   const categoryMap = {};
   categories.forEach(cat => {
-    if (cat.slug) {
-      categoryMap[cat.slug] = cat.id;
+    if (cat.name) {
+      categoryMap[cat.name.toLowerCase()] = cat.id;
     }
   });
 
   console.log('Categories found:', Object.keys(categoryMap));
 
   if (Object.keys(categoryMap).length === 0) {
-    console.error('No categories found with slugs. Please run the SQL migration first.');
+    console.error('No categories found.');
     return;
   }
 
@@ -58,7 +58,7 @@ async function updateServiceCategories() {
     const desc = (service.description || '').toLowerCase();
 
     if (name.includes('hair') || name.includes('cut') || name.includes('color') || name.includes('blow') || desc.includes('hair')) {
-      categoryId = categoryMap['hair'];
+      categoryId = categoryMap['hair salon'];
     } else if (name.includes('shave') || name.includes('beard') || name.includes('trim') || desc.includes('barber')) {
       categoryId = categoryMap['barber'];
     } else if (name.includes('nail') || name.includes('manicure') || name.includes('pedicure') || desc.includes('nail')) {
@@ -69,7 +69,7 @@ async function updateServiceCategories() {
       categoryId = categoryMap['skincare'];
     } else {
       // Default to hair if unsure
-      categoryId = categoryMap['hair'];
+      categoryId = categoryMap['hair salon'];
     }
 
     if (categoryId) {
