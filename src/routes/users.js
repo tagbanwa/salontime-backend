@@ -24,5 +24,11 @@ router.put('/notification-settings', userController.updateNotificationSettings);
 // User interactions for personalization
 router.post('/interactions', userController.trackUserInteraction);
 
+// Family members
+router.get('/family-members', userController.getFamilyMembers);
+router.post('/family-members', userController.addFamilyMember);
+router.put('/family-members/:memberId', userController.updateFamilyMember);
+router.delete('/family-members/:memberId', userController.deleteFamilyMember);
+
 module.exports = router;
 

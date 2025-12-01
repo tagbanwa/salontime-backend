@@ -266,6 +266,97 @@ class UserController {
       throw new AppError('Failed to delete avatar', 500, 'AVATAR_DELETE_FAILED');
     }
   });
+
+  // Get family members
+  getFamilyMembers = asyncHandler(async (req, res) => {
+    try {
+      const members = await supabaseService.getFamilyMembers(req.user.id);
+      // Map relationship -> relation for frontend compatibility
+      const mappedMembers = members.map(m => ({
+        ...m,
+        relation: m.relationship
+      }));
+      
+      res.status(200).json({
+        success: true,
+        data: { members: mappedMembers }
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError('Failed to fetch family members', 500, 'FAMILY_MEMBERS_FETCH_FAILED');
+    }
+  });
+
+  // Add family member
+  addFamilyMember = asyncHandler(async (req, res) => {
+    const { name, relation, relationship, date_of_birth } = req.body;
+    
+    if (!name) {
+      throw new AppError('Name is required', 400, 'MISSING_REQUIRED_FIELDS');
+    }
+
+    try {
+      const member = await supabaseService.addFamilyMember(req.user.id, {
+        name, 
+        relation: relation || relationship, 
+        date_of_birth
+      });
+      
+      // Map relationship -> relation for frontend compatibility
+      const mappedMember = {
+        ...member,
+        relation: member.relationship
+      };
+
+      res.status(201).json({
+        success: true,
+        data: { member: mappedMember }
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError('Failed to add family member', 500, 'FAMILY_MEMBER_ADD_FAILED');
+    }
+  });
+
+  // Update family member
+  updateFamilyMember = asyncHandler(async (req, res) => {
+    const { memberId } = req.params;
+    const updates = req.body;
+
+    try {
+      const member = await supabaseService.updateFamilyMember(req.user.id, memberId, updates);
+      
+      // Map relationship -> relation for frontend compatibility
+      const mappedMember = {
+        ...member,
+        relation: member.relationship
+      };
+
+      res.status(200).json({
+        success: true,
+        data: { member: mappedMember }
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError('Failed to update family member', 500, 'FAMILY_MEMBER_UPDATE_FAILED');
+    }
+  });
+
+  // Delete family member
+  deleteFamilyMember = asyncHandler(async (req, res) => {
+    const { memberId } = req.params;
+
+    try {
+      await supabaseService.deleteFamilyMember(req.user.id, memberId);
+      res.status(200).json({
+        success: true,
+        message: 'Family member deleted successfully'
+      });
+    } catch (error) {
+      if (error instanceof AppError) throw error;
+      throw new AppError('Failed to delete family member', 500, 'FAMILY_MEMBER_DELETE_FAILED');
+    }
+  });
 }
 
 module.exports = new UserController();

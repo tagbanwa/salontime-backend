@@ -374,6 +374,83 @@ class SupabaseService {
 
     return data;
   }
+
+  // Family Members Operations
+  async getFamilyMembers(userId) {
+    const { data, error } = await supabase
+      .from('family_members')
+      .select('*')
+      .eq('parent_id', userId)
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching family members:', error);
+      throw new AppError('Failed to fetch family members', 500, 'DATABASE_ERROR');
+    }
+
+    return data;
+  }
+
+  async addFamilyMember(userId, memberData) {
+    // Map fields to match database schema
+    const dbData = {
+      parent_id: userId,
+      name: memberData.name,
+      relationship: memberData.relationship || memberData.relation,
+      date_of_birth: memberData.date_of_birth
+    };
+
+    const { data, error } = await supabase
+      .from('family_members')
+      .insert([dbData])
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding family member:', error);
+      throw new AppError('Failed to add family member', 500, 'DATABASE_ERROR');
+    }
+
+    return data;
+  }
+
+  async updateFamilyMember(userId, memberId, updates) {
+    // Map fields to match database schema
+    const dbUpdates = {};
+    if (updates.name) dbUpdates.name = updates.name;
+    if (updates.relation || updates.relationship) dbUpdates.relationship = updates.relation || updates.relationship;
+    if (updates.date_of_birth) dbUpdates.date_of_birth = updates.date_of_birth;
+
+    const { data, error } = await supabase
+      .from('family_members')
+      .update(dbUpdates)
+      .eq('id', memberId)
+      .eq('parent_id', userId) // Ensure ownership
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating family member:', error);
+      throw new AppError('Failed to update family member', 500, 'DATABASE_ERROR');
+    }
+
+    return data;
+  }
+
+  async deleteFamilyMember(userId, memberId) {
+    const { error } = await supabase
+      .from('family_members')
+      .delete()
+      .eq('id', memberId)
+      .eq('parent_id', userId); // Ensure ownership
+
+    if (error) {
+      console.error('Error deleting family member:', error);
+      throw new AppError('Failed to delete family member', 500, 'DATABASE_ERROR');
+    }
+
+    return true;
+  }
 }
 
 module.exports = new SupabaseService();
